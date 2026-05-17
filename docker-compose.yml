@@ -1,0 +1,55 @@
+version: "3.9"
+
+services:
+  titanic-eda:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: titanic-eda:latest
+    container_name: titanic_eda_api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=${APP_ENV:-production}
+      - APP_HOST=0.0.0.0
+      - APP_PORT=8000
+      - SECRET_KEY=${SECRET_KEY:-changeme}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - CACHE_TTL_SECONDS=${CACHE_TTL_SECONDS:-3600}
+    volumes:
+      # Persist generated charts and reports across restarts
+      - eda_output:/app/output
+      - eda_data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - eda_net
+
+  # Optional: Nginx reverse proxy (uncomment for production)
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: titanic_nginx
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+  #   depends_on:
+  #     - titanic-eda
+  #   networks:
+  #     - eda_net
+
+volumes:
+  eda_output:
+  eda_data:
+
+networks:
+  eda_net:
+    driver: bridge
